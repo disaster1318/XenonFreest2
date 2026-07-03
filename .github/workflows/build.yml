@@ -1,0 +1,47 @@
+name: Build Xenon APK
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup Android SDK
+      uses: android-actions/setup-android@v3
+
+    - name: Install dependencies
+      run: |
+        sudo apt update
+        sudo apt install -y wget unzip openjdk-17-jdk apktool zipalign
+
+    - name: Download original APK
+      run: |
+        wget --no-check-certificate -O standoff2.apk "https://drive.google.com/uc?export=download&id=1VfR8TKuMECRrKGtstTzOkjb2dmJRASzS&confirm=t"
+
+    - name: Decode APK
+      run: |
+        java -jar apktool.jar d standoff2.apk -o standoff2_decoded
+
+    - name: Replace libil2cpp.so and add libxenon.so
+      run: |
+        cp jni/libs/arm64-v8a/libxenon.so standoff2_decoded/lib/arm64-v8a/
+
+    - name: Rebuild APK
+      run: |
+        java -jar apktool.jar b standoff2_decoded -o standoff2_mod.apk
+
+    - name: Align and sign APK
+      run: |
+        zipalign -v -p 4 standoff2_mod.apk standoff2_aligned.apk
+
+    - name: Upload APK
+      uses: actions/upload-artifact@v4
+      with:
+        name: Xenon-Standoff2
+        path: standoff2_aligned.apk
